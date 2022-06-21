@@ -88,6 +88,7 @@ class Matrix {
 			n: (this.array[0][0]!=NaN)?this.array.length:0,
 			sqr: (this.array.length==this.array[0].length)&&(this.array[0][0]!=NaN)
 		};
+		this.isVector = this.size.n==1;
 	}
 	static input(id) {
 		var rows_raw = document.getElementById(id).value.split('\n');
@@ -164,30 +165,7 @@ class Matrix {
 		}
 		return new Matrix('vector',t.arr()[i-1]);
 	}
-	pop(i) {
-		if((this.size.m<2)||(this.size.n!=1)) {
-			console.log('Non-vector matrix has not pop()');
-			return undefined;
-		}
-		if(i>this.size.m) {
-			console.log('Pop index is out of range');
-			return undefined;
-		}
-		var v = [];
-		var elem;
-		for(var j = 0; j<this.array[0].length; j++) {
-			if(i!=j+1) {
-				v.push(this.array[0][j]);
-			}
-			else {
-				elem = this.array[0][j];
-			}
-		}
-		this.array = [v];
-		this.size.m--;
-		return elem;
-	}
-	raw_tex() {
+	_raw_tex() {
 		var temp = [];
 		var eps = (arguments.length>0)?arguments[0]:3;
 		var out = new Matrix('array',JSON.parse(JSON.stringify(this.array)));
@@ -202,7 +180,7 @@ class Matrix {
 		}
 		return '\\begin{pmatrix} '+temp.join(' \\\\ ')+'\\end{pmatrix}';
 	}
-	raw_log() {
+	_raw_log() {
 		var log = [];
 		for(var i = 0; i<this.size.n; i++) {
 			log.push(JSON.stringify(this.array[i]));
@@ -211,9 +189,9 @@ class Matrix {
 	}
 	tex() {
 		if(arguments.length>0) {
-			return this.T().raw_tex(arguments[0]);
+			return this.T()._raw_tex(arguments[0]);
 		}
-		return this.T().raw_tex();
+		return this.T()._raw_tex();
 	}
 	Ctex() {
 		var cpy = this.copy().T();
@@ -245,24 +223,25 @@ class Matrix {
 		cpy.log();
 	}
 	log() {
-		this.T().raw_log();
+		this.T()._raw_log();
 	}
 	get(i,j) {
 		switch(arguments.length) {
 			case 1: {
-				if((i<1)||(i>this.size.m)||(this.size.n!=1)) {
-					console.log('ERROR: vector-get element '+i);
-					return NaN;
+				if(!this.isVector) {
+					console.log('get: Not a vector');
+					return undefined;
 				}
-				else {
-					return this.array[0][i-1];
+				if((i<1)||(i>this.size.m)) {
+					console.log('get: Index '+i+' out of range m = '+this.size.m);
 				}
+				return this.arr()[0][0];
 				break;
 			}
 			case 2: {
 				if((i<1)||(j<1)||(i>this.size.m)||(j>this.size.n)) {
 					console.log('ERROR: matrix-get element ('+i+','+j+')');
-					return NaN;
+					return undefined;
 				}
 				else {
 					return this.array[j-1][i-1];
@@ -271,19 +250,22 @@ class Matrix {
 			}
 			default: {
 				console.log('ERROR: invalid arguments in \'get()\'');
-				return NaN;
+				return undefined;
 			}
 		}
 	}
 	set(i,j,e) {
 		switch(arguments.length) {
 			case 2: {
-				if((i<1)||(i>this.size.m)||(this.size.n!=1)) {
-					console.log('ERROR: vector-set element '+i);
+				if(!this.isVector) {
+					console.log('set: Not a vector');
+					return undefined;
 				}
-				else {
-					this.array[0][i-1] = j;
+				if((i<1)||(i>this.size.m)) {
+					console.log('set: Vector index '+i+' out of range m = '+this.size.m);
+					return undefined;
 				}
+				this.array[0][i-1] = j;
 				break;
 			}
 			case 3: {
@@ -299,6 +281,7 @@ class Matrix {
 				console.log('ERROR: invalid arguments in \'set()\'');
 			}
 		}
+		return undefined;
 	}
 	T() {
 		var arr = [];
@@ -322,28 +305,34 @@ class Matrix {
 			return new Matrix('array',arr);
 		}
 		else {
-			var _m_ = this.size.m;
-			var _n_ = this.size.n;
-			var _k_ = m_.size.n;
-			if((_n_==_k_)&&(_n_==1)) {
-				return this.T().mult(m_).get(1,1);
-			}
-			if(_n_!=m_.size.m) {
-				console.log('ERROR: Inconsistent matrixes');
-				return new Matrix('NaN');
+			if(m_.constructor.name=='Matrix') {
+				var _m_ = this.size.m;
+				var _n_ = this.size.n;
+				var _k_ = m_.size.n;
+				if((_n_==_k_)&&(_n_==1)) {
+					return this.T().mult(m_).get(1,1);
+				}
+				if(_n_!=m_.size.m) {
+					console.log('ERROR: Inconsistent matrixes');
+					return new Matrix('NaN');
+				}
+				else {
+					var res = new Matrix('0',_m_,_k_);
+					for(var i = 1; i<=_m_; i++) {
+						for(var j = 1; j<=_k_; j++) {
+							var ij = 0;
+							for(var k = 1; k<=_n_; k++) {
+								ij += this.get(i,k)*m_.get(k,j);
+							}
+							res.set(i,j,ij);
+						}
+					}
+					return res;
+				}
 			}
 			else {
-				var res = new Matrix('0',_m_,_k_);
-				for(var i = 1; i<=_m_; i++) {
-					for(var j = 1; j<=_k_; j++) {
-						var ij = 0;
-						for(var k = 1; k<=_n_; k++) {
-							ij += this.get(i,k)*m_.get(k,j);
-						}
-						res.set(i,j,ij);
-					}
-				}
-				return res;
+				console.log('Try to mult by '+m_.constructor.name);
+				return undefined;
 			}
 		}
 	}
@@ -361,7 +350,7 @@ class Matrix {
 			var _n_ = this.size.n;
 			var _k_ = m_.size.n;
 			if(_n_!=m_.size.m) {
-				console.log('ERROR: Inconsistent matrices');
+				console.log('ERROR: Inconsistent matrixes');
 				return new Matrix('NaN');
 			}
 			else {
@@ -624,8 +613,8 @@ class Matrix {
 		return m;
 	}
 	vector_norm() {
-		if(this.size.n!=1) {
-			console.log('Not a vector');
+		if(!this.isVector) {
+			console.log('vector_norm: Not a vector');
 			return undefined;
 		}
 		var m = Math.abs(this.get(1));
@@ -634,5 +623,36 @@ class Matrix {
 			m = m>vi?m:vi;
 		}
 		return m;
+	}
+	vector_push(e) {
+		if(!this.isVector) {
+			console.log('vector_push: Not a vector');
+			return undefined;
+		}
+		this.array[0].push(e);
+		this.size.m++;
+		return undefined;
+	}
+	vector_pop(i) {
+		if(!this.isVector) {
+			console.log('vector_pop: Not a vector');
+			return undefined;
+		}
+		if(this.size.m==1) {
+			return this.get(1);
+		}
+		var e;
+		if(arguments.length==0) {
+			e = this.array[0].pop();			
+		}
+		else {
+			if((i<1)||(i>this.size.m)) {
+				console.log('vector_pop: index '+i+' out of range m = '+this.size.m);
+				return undefined;
+			}
+			e = this.array[0].splice(i-1,1);
+		}
+		this.size.m--;
+		return e;
 	}
 }
