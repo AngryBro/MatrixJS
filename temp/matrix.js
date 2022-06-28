@@ -612,17 +612,35 @@ class Matrix {
 		}
 		return m;
 	}
-	vector_norm() {
+	vector_norm(index = Infinity) {
 		if(!this.isVector) {
 			console.log('vector_norm: Not a vector');
 			return undefined;
 		}
-		var m = Math.abs(this.get(1));
-		for(var i = 2; i<=this.size.m; i++) {
-			var vi = Math.abs(this.get(i));
-			m = m>vi?m:vi;
+		switch(index) {
+			case Infinity: {
+				var m = Math.abs(this.get(1));
+				for(var i = 2; i<=this.size.m; i++) {
+					var vi = Math.abs(this.get(i));
+					m = m>vi?m:vi;
+				}
+				return m;
+			}
+			case 1: {
+				var s = 0;
+				for(var i = 1; i<=this.size.m; i++) {
+					s += Math.abs(this.get(i));
+				}
+				return s;
+			}
+			case 2: {
+				return Math.sqrt(this.mult(this));
+			}
+			default: {
+				console.log('vector_norm: unknown norm '+index);
+				return undefined;
+			}
 		}
-		return m;
 	}
 	vector_push(e) {
 		if(!this.isVector) {
