@@ -235,7 +235,7 @@ class Matrix {
 				if((i<1)||(i>this.size.m)) {
 					console.log('get: Index '+i+' out of range m = '+this.size.m);
 				}
-				return this.arr()[0][0];
+				return this.arr()[0][i-1];
 				break;
 			}
 			case 2: {
